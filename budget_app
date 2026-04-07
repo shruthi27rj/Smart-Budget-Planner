@@ -1,0 +1,120 @@
+import tkinter as tk
+from tkinter import ttk, messagebox, filedialog
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Initialize main window
+root = tk.Tk()
+root.title("Budget Planner")
+root.geometry("700x500")
+
+# Data storage
+budget_data = []
+categories = ["Rent", "Food", "Transport", "Savings", "Entertainment", "Others"]
+monthly_income = tk.DoubleVar()
+
+# Entry form
+form_frame = tk.Frame(root)
+form_frame.pack(pady=10)
+
+tk.Label(form_frame, text="Monthly Income (₹):").grid(row=0, column=0)
+income_entry = tk.Entry(form_frame, textvariable=monthly_income)
+income_entry.grid(row=0, column=1)
+
+tk.Label(form_frame, text="Expense Category:").grid(row=1, column=0)
+category_var = tk.StringVar()
+category_menu = ttk.Combobox(form_frame, textvariable=category_var, values=categories)
+category_menu.grid(row=1, column=1)
+category_menu.current(0)
+
+tk.Label(form_frame, text="Expense Amount (₹):").grid(row=2, column=0)
+amount_entry = tk.Entry(form_frame)
+amount_entry.grid(row=2, column=1)
+
+# Treeview for table
+tree_frame = tk.Frame(root)
+tree_frame.pack(pady=10)
+
+columns = ["Category", "Amount"]
+tree = ttk.Treeview(tree_frame, columns=columns, show="headings")
+
+for col in columns:
+    tree.heading(col, text=col)
+    tree.column(col, width=150)
+
+tree.pack()
+
+# Summary label
+summary_label = tk.Label(
+    root,
+    text="Total Income: ₹0 | Total Expenses: ₹0 | Balance: ₹0",
+    font=("Arial", 12)
+)
+summary_label.pack(pady=5)
+
+# Add expense function
+def add_expense():
+    category = category_var.get()
+    amount = amount_entry.get()
+
+    try:
+        amount = float(amount)
+    except:
+        messagebox.showerror("Invalid Input", "Please enter a valid amount.")
+        return
+
+    budget_data.append([category, amount])
+    tree.insert("", "end", values=(category, f"{amount:.2f}"))
+    update_summary()
+    amount_entry.delete(0, tk.END)
+
+# Update summary
+def update_summary():
+    df = pd.DataFrame(budget_data, columns=columns)
+    total_expenses = df["Amount"].sum()
+    income = monthly_income.get()
+    balance = income - total_expenses
+
+    summary_label.config(
+        text=f"Total Income: ₹{income:.2f} | Total Expenses: ₹{total_expenses:.2f} | Balance: ₹{balance:.2f}"
+    )
+
+# Export to CSV
+def export_csv():
+    if not budget_data:
+        messagebox.showinfo("No Data", "No budget data to export.")
+        return
+
+    df = pd.DataFrame(budget_data, columns=columns)
+    file_path = filedialog.asksaveasfilename(
+        defaultextension=".csv",
+        filetypes=[("CSV files", "*.csv")]
+    )
+
+    if file_path:
+        df.to_csv(file_path, index=False)
+        messagebox.showinfo("Exported", f"Data exported to {file_path}")
+
+# Show pie chart
+def show_pie_chart():
+    if not budget_data:
+        messagebox.showinfo("No Data", "No expenses to visualize.")
+        return
+
+    df = pd.DataFrame(budget_data, columns=columns)
+
+    plt.figure(figsize=(6, 6))
+    plt.pie(df["Amount"], labels=df["Category"], autopct="%1.1f%%")
+    plt.title("Expense Distribution")
+    plt.show()
+
+# Buttons
+button_frame = tk.Frame(root)
+button_frame.pack(pady=10)
+
+tk.Button(button_frame, text="Add Expense", command=add_expense).grid(row=0, column=0, padx=10)
+tk.Button(button_frame, text="Export to CSV", command=export_csv).grid(row=0, column=1, padx=10)
+tk.Button(button_frame, text="Show Pie Chart", command=show_pie_chart).grid(row=0, column=2, padx=10)
+
+# Run app
+root.mainloop()
